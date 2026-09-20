@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Extract the latest saved memory for every agent in a public AI Village."
+    />
+    <meta name="theme-color" content="#f7f7f3" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self' https://theaidigest.org https://r.jina.ai; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'self'; form-action 'self'"
+    />
+    <title>AI Village Memory Extractor</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">AI VILLAGE TOOL</p>
+          <h1>Current Memory Extractor</h1>
+          <p class="lede">
+            Pull the newest saved memory version for every agent in a public AI Village,
+            inspect the snapshot, and export it as JSON or Markdown.
+          </p>
+        </div>
+        <a class="reference-link" href="https://minuteandone.github.io/Aivillagenews/" target="_blank" rel="noreferrer">
+          Aivillagenews ↗
+        </a>
+      </header>
+
+      <section class="panel controls" aria-labelledby="extract-heading">
+        <div>
+          <h2 id="extract-heading">Extract a village</h2>
+          <p class="muted">
+            “Current” means the newest saved memory returned by the Village memory API for each
+            agent. It does not claim to expose private runtime context.
+          </p>
+        </div>
+        <form id="extract-form" class="extract-form">
+          <label>
+            Village slug
+            <input id="village-slug" name="slug" value="actual-launch-1" autocomplete="off" spellcheck="false" />
+          </label>
+          <label>
+            Parallel requests
+            <select id="concurrency" name="concurrency">
+              <option value="1">1 · gentlest</option>
+              <option value="2">2</option>
+              <option value="3" selected>3 · recommended</option>
+              <option value="4">4</option>
+              <option value="6">6 · faster</option>
+            </select>
+          </label>
+          <button id="extract-button" type="submit">Extract current memories</button>
+        </form>
+        <div id="progress-wrap" class="progress-wrap" hidden>
+          <div class="progress-meta">
+            <span id="progress-label">Starting…</span>
+            <span id="progress-count">0 / 0</span>
+          </div>
+          <progress id="progress" max="1" value="0"></progress>
+        </div>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </section>
+
+      <section id="results" hidden>
+        <div class="summary-grid" aria-label="Extraction summary">
+          <article class="stat"><strong id="stat-agents">0</strong><span>agents</span></article>
+          <article class="stat"><strong id="stat-memories">0</strong><span>with memory</span></article>
+          <article class="stat"><strong id="stat-empty">0</strong><span>without memory</span></article>
+          <article class="stat"><strong id="stat-errors">0</strong><span>errors</span></article>
+        </div>
+
+        <section class="panel result-toolbar">
+          <div>
+            <h2 id="village-title">Snapshot</h2>
+            <p id="snapshot-meta" class="muted"></p>
+          </div>
+          <div class="toolbar-actions">
+            <button id="download-json" type="button" class="secondary">Download JSON</button>
+            <button id="download-markdown" type="button" class="secondary">Download Markdown</button>
+            <button id="copy-all" type="button" class="secondary">Copy all</button>
+          </div>
+          <label class="search-box">
+            Search agents or memory text
+            <input id="search" type="search" placeholder="e.g. DeepSeek, governance, Botme…" />
+          </label>
+        </section>
+
+        <section id="agent-list" class="agent-list" aria-label="Agent memories"></section>
+      </section>
+    </main>
+
+    <template id="agent-card-template">
+      <article class="memory-card">
+        <header class="memory-card__header">
+          <div>
+            <h3 class="agent-name"></h3>
+            <p class="agent-meta muted"></p>
+          </div>
+          <button class="copy-memory secondary" type="button">Copy memory</button>
+        </header>
+        <div class="memory-state"></div>
+        <pre class="memory-content"></pre>
+      </article>
+    </template>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

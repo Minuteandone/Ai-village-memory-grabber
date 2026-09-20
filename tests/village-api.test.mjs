@@ -16,41 +16,40 @@ test("parseRelayedJson accepts Jina Reader wrapper", () => {
   assert.deepEqual(parseRelayedJson(wrapped), { dates: ["2026-09-20"] });
 });
 
-test("extractCurrentMemories returns newest memory per roster agent", async () => {
-  const responses = new Map([
-    ["/api/villages?slug=actual-launch-1", { id: "v1", slug: "actual-launch-1", name: "Actual Launch" }],
-    ["/api/villages/v1", {
-      id: "v1",
-      slug: "actual-launch-1",
-      name: "Actual Launch",
-      agents: [
-        { id: "a1", name: "Agent One", modelString: "Model A" },
-        { id: "a2", name: "Agent Two", modelString: "Model B" },
-        { id: "a3", name: "Agent Three" },
-      ],
-    }],
-    ["/api/agent/a1/memories", { memories: [
-      { id: "old", agentId: "a1", content: "old", createdAt: "2026-09-18T00:00:00Z", updatedAt: "2026-09-18T00:00:00Z" },
-      { id: "new", agentId: "a1", content: "newest", createdAt: "2026-09-20T00:00:00Z", updatedAt: "2026-09-20T00:00:00Z" },
-    ] }],
-    ["/api/agent/a2/memories", { memories: [] }],
-  ]);
+test("extractCurrentMemories returns newest memory per active roster agent", async () => {
+  const village = {
+    id: "v1",
+    slug: "actual-launch-1",
+    name: "Actual Launch",
+    agents: [
+      { id: "a1", name: "Agent One", modelString: "Model A", isParticipating: true },
+      { id: "a2", name: "Agent Two", modelString: "Model B", isParticipating: true },
+      { id: "a3", name: "Agent Three", isParticipating: true },
+    ],
+  };
 
   const client = {
     async loadVillage(slug) {
       assert.equal(slug, "actual-launch-1");
-      return responses.get("/api/villages/v1");
+      return village;
     },
     async loadLatestMemory(agentId) {
-      if (agentId === "a3") throw new Error("simulated failure");
-      const memories = [...responses.get(`/api/agent/${agentId}/memories`).memories];
-      memories.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      return memories[0] || null;
+      if (agentId === "a1") {
+        const memories = [
+          { id: "old", agentId: "a1", content: "old", createdAt: "2026-09-18T00:00:00Z", updatedAt: "2026-09-18T00:00:00Z" },
+          { id: "new", agentId: "a1", content: "newest", createdAt: "2026-09-20T00:00:00Z", updatedAt: "2026-09-20T00:00:00Z" },
+        ];
+        memories.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        return memories[0];
+      }
+      if (agentId === "a2") return null;
+      throw new Error("simulated failure");
     },
   };
 
   const snapshot = await extractCurrentMemories({ slug: "actual-launch-1", concurrency: 2, client });
   assert.equal(snapshot.totals.agents, 3);
+  assert.equal(snapshot.totals.excludedInactive, 0);
   assert.equal(snapshot.totals.withMemory, 1);
   assert.equal(snapshot.totals.withoutMemory, 1);
   assert.equal(snapshot.totals.errors, 1);
@@ -60,13 +59,48 @@ test("extractCurrentMemories returns newest memory per roster agent", async () =
   assert.match(snapshotToMarkdown(snapshot), /newest/);
 });
 
+test("inactive and historical agents are excluded before memory requests", async () => {
+  const requested = [];
+  const client = {
+    async loadVillage() {
+      return {
+        id: "v1",
+        slug: "actual-launch-1",
+        name: "Actual Launch",
+        agents: [
+          { id: "active", name: "Active Agent", isParticipating: true },
+          { id: "inactive", name: "Inactive Agent", isParticipating: false },
+          { id: "historical", name: "Historical Agent" },
+        ],
+      };
+    },
+    async loadLatestMemory(agentId) {
+      requested.push(agentId);
+      return {
+        id: `memory-${agentId}`,
+        agentId,
+        content: "active memory",
+        createdAt: "2026-09-20T00:00:00Z",
+        updatedAt: "2026-09-20T00:00:00Z",
+      };
+    },
+  };
+
+  const snapshot = await extractCurrentMemories({ slug: "actual-launch-1", client });
+  assert.deepEqual(requested, ["active"]);
+  assert.equal(snapshot.totals.agents, 1);
+  assert.equal(snapshot.totals.excludedInactive, 2);
+  assert.deepEqual(snapshot.agents.map((entry) => entry.agent.id), ["active"]);
+  assert.doesNotMatch(snapshotToMarkdown(snapshot), /Inactive Agent|Historical Agent/);
+});
+
 test("createVillageClient parses relayed endpoint responses", async () => {
   const fetchImpl = async (url) => {
     const target = String(url).replace("https://r.jina.ai/https://theaidigest.org/village", "");
     const payload = target.startsWith("/api/villages?slug=")
       ? { id: "v1", slug: "x", name: "X" }
       : target === "/api/villages/v1"
-        ? { id: "v1", slug: "x", name: "X", agents: [{ id: "a", name: "A" }] }
+        ? { id: "v1", slug: "x", name: "X", agents: [{ id: "a", name: "A", isParticipating: true }] }
         : { memories: [{ id: "m", agentId: "a", content: "hello", createdAt: "2026-09-20T00:00:00Z", updatedAt: "2026-09-20T00:00:00Z" }] };
     return {
       ok: true,

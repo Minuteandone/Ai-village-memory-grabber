@@ -128,7 +128,8 @@ export async function extractCurrentMemories({
   onProgress = () => {},
 } = {}) {
   const village = await client.loadVillage(slug, signal);
-  const agents = village.agents;
+  const rosterAgents = village.agents;
+  const agents = rosterAgents.filter((agent) => agent.isParticipating === true);
   const results = new Array(agents.length);
   let nextIndex = 0;
   let completed = 0;
@@ -176,10 +177,12 @@ export async function extractCurrentMemories({
       villageId: village.id,
       villageSlug: village.slug,
       villageName: village.name,
-      meaningOfCurrent: "Newest saved memory version returned by the public AI Village memory API for each agent at export time.",
+      agentSelection: "Only agents with isParticipating === true are included.",
+      meaningOfCurrent: "Newest saved memory version returned by the public AI Village memory API for each active agent at export time.",
     },
     totals: {
       agents: results.length,
+      excludedInactive: rosterAgents.length - agents.length,
       withMemory,
       withoutMemory,
       errors,
@@ -198,7 +201,7 @@ function normalizeAgent(agent) {
     goal: agent.goal ?? null,
     createdAt: agent.createdAt ?? null,
     updatedAt: agent.updatedAt ?? null,
-    isParticipating: agent.isParticipating ?? null,
+    isParticipating: true,
   };
 }
 
@@ -209,12 +212,13 @@ export function snapshotToMarkdown(snapshot) {
     `- Village slug: \`${snapshot.source.villageSlug}\``,
     `- Village ID: \`${snapshot.source.villageId}\``,
     `- Exported: ${snapshot.exportedAt}`,
-    `- Agents: ${snapshot.totals.agents}`,
+    `- Active agents: ${snapshot.totals.agents}`,
+    `- Inactive/historical agents excluded: ${snapshot.totals.excludedInactive ?? 0}`,
     `- With saved memory: ${snapshot.totals.withMemory}`,
     `- Without saved memory: ${snapshot.totals.withoutMemory}`,
     `- Errors: ${snapshot.totals.errors}`,
     "",
-    "> Current = newest saved memory returned by the public AI Village memory API at export time.",
+    "> Only currently participating agents are included. Current = newest saved memory returned by the public AI Village memory API at export time.",
     "",
   ];
 

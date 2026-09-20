@@ -56,7 +56,7 @@ form.addEventListener("submit", async (event) => {
         progress.value = completed;
         progressCount.textContent = `${completed} / ${total}`;
         progressLabel.textContent = phase === "agents"
-          ? `Found ${total} agents in ${village.name}.`
+          ? `Found ${total} active agents in ${village.name}.`
           : `Reading ${agent?.name || "agent"}…`;
       },
     });
@@ -111,7 +111,7 @@ function renderSnapshot(snapshot) {
   document.querySelector("#stat-empty").textContent = snapshot.totals.withoutMemory;
   document.querySelector("#stat-errors").textContent = snapshot.totals.errors;
   document.querySelector("#village-title").textContent = `${snapshot.source.villageName} · current memories`;
-  document.querySelector("#snapshot-meta").textContent = `${snapshot.source.villageSlug} · exported ${formatTimestamp(snapshot.exportedAt)}`;
+  document.querySelector("#snapshot-meta").textContent = `${snapshot.source.villageSlug} · ${snapshot.totals.excludedInactive ?? 0} inactive/historical excluded · exported ${formatTimestamp(snapshot.exportedAt)}`;
   renderAgentCards(snapshot);
 }
 
